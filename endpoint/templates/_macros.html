@@ -1,0 +1,244 @@
+{# Synchronizer token: must be inside every <form method="post"> (checked server-side). #}
+{% macro csrf_field() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+
+{# Dismisses the banner it sits in, until the next page load (handled in base.html). #}
+{% macro banner_close() %}<button type="button" class="banner-close" aria-label="Dismiss notification"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg></button>{% endmacro %}
+
+{# Shown when callback hits were dropped by the per-token/IP rate limit, so a low
+   event count is not mistaken for "the agent only fetched it N times". #}
+{% macro suppressed_notice(count, limit, window_seconds) %}
+    {% if count %}
+    <p class="banner banner-error banner-inline">{{ count }} callback hit{{ "" if count == 1 else "s" }} not recorded: rate limit of {{ limit }} per {{ window_seconds }}s from one IP on one token exceeded.{{ banner_close() }}</p>
+    {% endif %}
+{% endmacro %}
+
+{# Banners shown after an archive/restore action. #}
+{% macro event_notices(archived, restored, no_selection, undo_ids=[]) %}
+    {% if archived %}
+    <div class="banner banner-success banner-action">
+        <span>{{ archived }} event{{ "" if archived == "1" else "s" }} archived. Hidden from this view, kept in the database.</span>
+        {% if undo_ids %}
+        <form method="post" action="{{ url_for('dashboard.restore_events_route') }}">
+            {{ csrf_field() }}
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            {% for event_id in undo_ids %}
+            <input type="hidden" name="event_ids" value="{{ event_id }}">
+            {% endfor %}
+            <button type="submit" class="banner-undo">Undo</button>
+        </form>
+        {% endif %}
+        {{ banner_close() }}
+    </div>
+    {% endif %}
+    {% if restored %}
+    <p class="banner banner-success">{{ restored }} event(s) restored.{{ banner_close() }}</p>
+    {% endif %}
+    {% if no_selection %}
+    <p class="banner banner-error banner-inline">Select at least one event first.{{ banner_close() }}</p>
+    {% endif %}
+{% endmacro %}
+
+{# Toolbar rendered inside the events <form>; buttons override the form action. #}
+{% macro event_toolbar(show_archived, archived_count, view_url, archived_url) %}
+    <div class="events-toolbar">
+        <div class="toolbar-actions">
+            {% if show_archived %}
+            <button type="submit" class="copy-btn" data-needs-selection formaction="{{ url_for('dashboard.restore_events_route') }}">Restore selected</button>
+            {% else %}
+            <button type="submit" class="copy-btn" data-needs-selection formaction="{{ url_for('dashboard.archive_events_route') }}">Archive selected</button>
+            {% endif %}
+            <button type="submit" class="copy-btn" data-needs-selection formaction="{{ url_for('dashboard.export_events_csv') }}">Export selected</button>
+            <span class="selection-count" aria-live="polite"></span>
+        </div>
+        <div class="toolbar-view">
+            {% if show_archived %}
+            <a class="btn-secondary" href="{{ view_url }}">&larr; Back to active events</a>
+            {% else %}
+            <a class="btn-secondary" href="{{ archived_url }}">Show archived ({{ archived_count }})</a>
+            {% endif %}
+        </div>
+    </div>
+{% endmacro %}
+
+{# Search + date-range filter bar (GET), with the active filters and match count below it.
+   Enter in the search box submits natively (the form has a submit button). Each submit
+   adds the field + text as one more stacked filter; the existing ones ride along as
+   hidden f=<field>:<value> inputs. Links marked data-filter-link are loaded in place. #}
+{% macro event_filters(filters, search_fields, date_ranges, show_archived, clear_url, chips, error, match_count, shown_count) %}
+    <form method="get" action="{{ url_for('dashboard.index') }}" class="filter-bar" role="search">
+        {% if show_archived %}
+        <input type="hidden" name="show" value="archived">
+        {% endif %}
+        {% for field, value in filters.filters %}
+        <input type="hidden" name="f" value="{{ field }}:{{ value }}">
+        {% endfor %}
+        <div class="filter-row">
+            <div class="filter-group filter-group-search">
+                <label class="filter-label" for="filter-q">Search</label>
+                <div class="filter-search-group">
+                    <select name="field" aria-label="Search field" onchange="updateSearchPlaceholder(this)">
+                        {% for value, (label, placeholder) in search_fields.items() %}
+                        <option value="{{ value }}" data-placeholder="{{ placeholder }}"{% if filters.field == value %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="filter-search-input">
+                        <svg class="filter-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.75" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <input type="search" id="filter-q" name="q" value="{{ filters.q }}" maxlength="200"
+                               placeholder="{{ (search_fields.get(filters.field) or (search_fields.values() | first))[1] }}">
+                    </span>
+                </div>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label" for="filter-range">Date &amp; Time</label>
+                <span class="filter-date-select">
+                    <svg class="filter-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <select id="filter-range" name="range" onchange="toggleCustomRange(this)">
+                        {% for value, label in date_ranges %}
+                        <option value="{{ value }}"{% if filters.range == value %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </span>
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn-primary">Search Events</button>
+                <a class="btn-secondary" href="{{ clear_url }}" data-filter-link>Clear</a>
+            </div>
+        </div>
+        {% set custom = filters.range == "custom" %}
+        <div class="filter-custom"{% if not custom %} hidden{% endif %}>
+            <label>From
+                <span class="filter-pair">
+                    <input type="date" name="date_from" value="{{ filters.date_from }}" aria-label="Start date"{% if not custom %} disabled{% endif %}>
+                    <input type="time" name="time_from" value="{{ filters.time_from }}" aria-label="Start time (optional)"{% if not custom %} disabled{% endif %}>
+                </span>
+            </label>
+            <label>To
+                <span class="filter-pair">
+                    <input type="date" name="date_to" value="{{ filters.date_to }}" aria-label="End date"{% if not custom %} disabled{% endif %}>
+                    <input type="time" name="time_to" value="{{ filters.time_to }}" aria-label="End time (optional)"{% if not custom %} disabled{% endif %}>
+                </span>
+            </label>
+            <span class="filter-hint">Perth time (AWST). Times are optional; end dates are inclusive.</span>
+        </div>
+    </form>
+
+    {% if error %}
+    <p class="banner banner-error banner-inline">Filters not applied: {{ error }}{{ banner_close() }}</p>
+    {% elif chips %}
+    <div class="filter-summary" aria-live="polite">
+        <span class="filter-count">
+            {{ match_count }} matching event{{ "" if match_count == 1 else "s" }}
+            {%- if match_count > shown_count %} &middot; showing latest {{ shown_count }}{% endif %}
+        </span>
+        {% for chip in chips %}
+        <span class="filter-chip">
+            <span class="filter-chip-label">{{ chip.label }}</span> {{ chip.value }}
+            <a class="filter-chip-remove" href="{{ chip.remove_url }}" data-filter-link
+               aria-label="Remove filter: {{ chip.label }} {{ chip.value }}"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg></a>
+        </span>
+        {% endfor %}
+        {% if chips | length > 1 %}
+        <a class="filter-clear-all" href="{{ clear_url }}" data-filter-link>Clear all</a>
+        {% endif %}
+    </div>
+    {% endif %}
+{% endmacro %}
+
+{# Advanced export form (GET). token_id pins the export to a single token;
+   filters (the dashboard's active filter params) are carried over as hidden
+   inputs and replace the form's own date fields when a date filter is active. #}
+{% macro export_options(fields, document_refs=none, token_id=none, filters=none) %}
+    <details class="export-options">
+        <summary>Export options</summary>
+        <form method="get" action="{{ url_for('dashboard.export_events_csv') }}" class="export-form">
+            {% if token_id %}
+            <input type="hidden" name="token_id" value="{{ token_id }}">
+            {% endif %}
+            {% for name, value in (filters or {}).items() %}
+            {% for item in (value if value is not string else [value]) %}
+            <input type="hidden" name="{{ name }}" value="{{ item }}">
+            {% endfor %}
+            {% endfor %}
+            {% if filters %}
+            <p class="export-note">Exports only events matching the current filters.</p>
+            {% endif %}
+
+            <div class="export-grid">
+                {% if not (filters and filters.range) %}
+                <label>From <input type="date" name="date_from"></label>
+                <label>To <input type="date" name="date_to"></label>
+                {% endif %}
+
+                {% if document_refs is not none %}
+                <label>Document
+                    <select name="document_ref">
+                        <option value="">All documents</option>
+                        {% for ref in document_refs %}
+                        <option value="{{ ref }}">{{ ref }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                {% endif %}
+
+                <label>Format
+                    <select name="format">
+                        <option value="csv">CSV</option>
+                        <option value="json">JSON</option>
+                    </select>
+                </label>
+
+                <label>Timestamps
+                    <select name="tz">
+                        <option value="local">Local time</option>
+                        <option value="utc">UTC (ISO 8601)</option>
+                    </select>
+                </label>
+            </div>
+
+            <fieldset class="export-columns">
+                <legend>Columns</legend>
+                {% for field in fields %}
+                <label class="check"><input type="checkbox" name="columns" value="{{ field }}" checked> {{ field }}</label>
+                {% endfor %}
+                <label class="check"><input type="checkbox" name="columns" value="archived_at"> archived_at</label>
+            </fieldset>
+
+            {% if not (filters and filters.show) %}
+            <label class="check"><input type="checkbox" name="include_archived" value="1"> Include archived events</label>
+            {% endif %}
+
+            <div><button type="submit" class="copy-btn">Download</button></div>
+        </form>
+    </details>
+{% endmacro %}
+
+{# Leading cells of an event row: a full-cell checkbox hit target and the disclosure chevron. #}
+{% macro event_row_controls(event) %}
+    <td class="check-col"><label class="check-hit"><input type="checkbox" name="event_ids" value="{{ event.id }}" aria-label="Select event {{ event.id }}"></label></td>
+    <td class="toggle-col">
+        <button type="button" class="row-toggle" aria-expanded="false" aria-controls="event-detail-{{ event.id }}" aria-label="Show details">
+            <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+    </td>
+{% endmacro %}
+
+{# Collapsed row revealed when its preceding event row is clicked. The wrapper
+   animates open (grid rows 0fr -> 1fr), so the row is never `hidden`. #}
+{% macro event_detail(event, colspan) %}
+    <tr class="event-detail" id="event-detail-{{ event.id }}">
+        <td colspan="{{ colspan }}">
+          <div class="detail-wrap"><div class="detail-inner">
+            <dl class="detail-grid">
+                <dt>Timestamp</dt><dd>{{ event.timestamp | local_time }}</dd>
+                {% if event.document_ref %}<dt>Document</dt><dd>{{ event.document_ref }}</dd>{% endif %}
+                <dt>Token</dt><dd class="mono">{{ event.token_id }}</dd>
+                <dt>IP address</dt><dd class="mono">{{ event.ip_address }}</dd>
+                <dt>User-Agent</dt><dd>{{ event.user_agent or "(none sent)" }}</dd>
+                <dt>Method</dt><dd>{{ event.method }}</dd>
+                <dt>Path</dt><dd class="mono">{{ event.path }}</dd>
+                {% if event.archived_at %}<dt>Archived</dt><dd>{{ event.archived_at | local_time }}</dd>{% endif %}
+            </dl>
+          </div></div>
+        </td>
+    </tr>
+{% endmacro %}

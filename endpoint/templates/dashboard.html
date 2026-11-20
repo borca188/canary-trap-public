@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, banner_close, suppressed_notice, event_notices, event_toolbar, event_row_controls, event_detail, event_filters, export_options %}
+{% block title %}Dashboard · Canary Trap{% endblock %}
+{% block content %}
+    <div class="layout">
+        <aside class="card create-panel">
+            <p class="section-label">Create Honeypot Token</p>
+            <form method="post" action="{{ url_for('dashboard.create_token_route') }}" class="create-form">
+                {{ csrf_field() }}
+                <div class="field">
+                    <label for="document_ref">Document reference</label>
+                    <input type="text" id="document_ref" name="document_ref" value="{{ request.args.get('document_ref', '') }}" maxlength="200" required>
+                </div>
+                <div class="field">
+                    <label for="custom_path">Custom URL path <span class="field-optional">Optional</span></label>
+                    <div class="path-input">
+                        <span class="path-prefix mono" aria-hidden="true">/</span>
+                        <input type="text" id="custom_path" name="custom_path" class="mono"
+                               value="{{ request.args.get('custom_path', '') }}" maxlength="200" autocomplete="off" spellcheck="false"
+                               pattern="/?[A-Za-z0-9][A-Za-z0-9._\-]*(/[A-Za-z0-9][A-Za-z0-9._\-]*)*/?"
+                               title="Letters, numbers, hyphens, underscores, dots and slashes, e.g. products/line-finder"
+                               aria-describedby="custom_path-hint" data-base="{{ custom_path_base }}" oninput="previewCustomPath(this)">
+                    </div>
+                    <p class="field-hint" id="custom_path-hint" data-empty="Redirects to the token's callback URL. Leave blank to skip.">Redirects to the token's callback URL. Leave blank to skip.</p>
+                </div>
+                <button type="submit">Create Token</button>
+            </form>
+
+            {% if error %}
+            <p class="banner banner-error">{{ error }}{{ banner_close() }}</p>
+            {% endif %}
+
+            {% if created_token %}
+            <div class="result-block">
+                <p class="section-label">Token Created</p>
+
+                <div class="result-row">
+                    <span class="result-label">Token</span>
+                    <span class="mono">{{ created_token.token_id }}</span>
+                </div>
+
+                <div class="result-row">
+                    <span class="result-label">Document Reference</span>
+                    <span>{{ created_token.document_ref }}</span>
+                </div>
+
+                <div class="result-row result-row-url">
+                    <span class="result-label">Callback URL</span>
+                    <div class="copy-row">
+                        <input type="text" id="created-url" class="mono url-field" value="{{ created_token.callback_url }}" readonly onclick="this.select()">
+                        <button type="button" class="copy-btn" onclick="copyText('created-url', this)"><span class="copy-label">Copy</span><span class="copy-done" aria-hidden="true">Copied</span></button>
+                    </div>
+                </div>
+
+                {% if created_token.custom_url %}
+                <div class="result-row result-row-url">
+                    <span class="result-label">Custom URL</span>
+                    <div class="copy-row">
+                        <input type="text" id="created-custom-url" class="mono url-field" value="{{ created_token.custom_url }}" readonly onclick="this.select()">
+                        <button type="button" class="copy-btn" onclick="copyText('created-custom-url', this)"><span class="copy-label">Copy</span><span class="copy-done" aria-hidden="true">Copied</span></button>
+                    </div>
+                    <span class="field-hint">Redirects (302) to the callback URL above.</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </aside>
+
+        <div class="main-panel">
+            <div class="main-header">
+                <h2>Dashboard</h2>
+                <a class="btn-secondary" id="export-all" href="{{ url_for('dashboard.export_events_csv', **export_params) }}">Export CSV</a>
+            </div>
+
+            <div class="metrics-row">
+                <div class="metric-card">
+                    <span class="metric-label">Tokens Created</span>
+                    <span class="metric-value">{{ tokens_count }}</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Callbacks Recorded</span>
+                    <span class="metric-value">{{ callbacks_count }}</span>
+                </div>
+            </div>
+
+            <section class="card" id="activity">
+                <p class="section-label">{% if show_archived %}Archived Callback Activity{% else %}Recent Callback Activity{% endif %}</p>
+
+                {{ event_notices(archived, restored, no_selection, undo_ids) }}
+                {{ suppressed_notice(suppressed_count, rate_limit, rate_window_seconds) }}
+                {{ event_filters(filters, search_fields, date_ranges, show_archived, clear_filters_url, filter_chips, filter_error, match_count, recent_events | length) }}
+                {{ export_options(export_fields, document_refs, filters=export_params) }}
+
+                <form method="post" action="{{ url_for('dashboard.archive_events_route') }}">
+                {{ csrf_field() }}
+                <input type="hidden" name="next" value="{{ request.full_path }}">
+                {{ event_toolbar(show_archived, archived_count, active_url, archived_url) }}
+
+                {% if recent_events %}
+                <div class="activity-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="check-col"><label class="check-hit"><input type="checkbox" data-select-all aria-label="Select all events"></label></th>
+                                <th class="toggle-col"><span class="visually-hidden">Details</span></th>
+                                <th>Timestamp</th>
+                                <th>Document Reference</th>
+                                <th>Token</th>
+                                <th>IP Address</th>
+                                <th>User-Agent</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in recent_events %}
+                            <tr class="event-row{% if event.archived_at %} row-archived{% endif %}">
+                                {{ event_row_controls(event) }}
+                                <td>{{ event.timestamp | local_time }}</td>
+                                <td>{{ event.document_ref }}</td>
+                                <td><a class="mono" href="{{ url_for('dashboard.token_detail', token_id=event.token_id) }}">{{ event.token_id }}</a></td>
+                                <td class="mono">{{ event.ip_address }}</td>
+                                <td class="ua-cell" title="{{ event.user_agent or '' }}">{{ event.user_agent or "" }}</td>
+                            </tr>
+                            {{ event_detail(event, 7) }}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% elif filter_chips %}
+                <div class="empty-state">
+                    <p>No {% if show_archived %}archived {% endif %}events match the current filters.</p>
+                </div>
+                {% elif show_archived %}
+                <div class="empty-state">
+                    <p>No archived events.</p>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <p>No callbacks recorded yet.</p>
+                    <p>Create a token on the left and embed its callback URL in a honeypot document.</p>
+                </div>
+                {% endif %}
+                </form>
+            </section>
+
+            <section class="card">
+                <p class="section-label">Created Tokens</p>
+
+                {% if deactivated %}
+                <p class="banner banner-success">Token deleted. Its callback history is preserved.{{ banner_close() }}</p>
+                {% endif %}
+
+                {% if active_tokens %}
+                <div class="tokens-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Document Reference</th>
+                                <th>Token</th>
+                                <th>Created</th>
+                                <th>Callbacks</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for token in active_tokens %}
+                            <tr>
+                                <td>
+                                    {{ token.document_ref }}
+                                    {% if token.custom_path %}<span class="mono token-custom-path" title="Custom URL: {{ token.custom_url }}">/{{ token.custom_path }}</span>{% endif %}
+                                </td>
+                                <td>
+                                    <a class="mono token-cell" title="{{ token.token_id }}" href="{{ url_for('dashboard.token_detail', token_id=token.token_id) }}">{{ token.token_id }}</a>
+                                </td>
+                                <td>{{ token.created_at | local_time }}</td>
+                                <td>{{ token.event_count }}</td>
+                                <td>
+                                    <div class="actions-cell">
+                                        <div class="url-stack">
+                                            <div class="url-pair">
+                                                <input type="text" id="token-url-{{ loop.index }}" class="mono url-field-compact" value="{{ token.callback_url }}" readonly onclick="this.select()" aria-label="Callback URL">
+                                                <button type="button" class="copy-btn" onclick="copyText('token-url-{{ loop.index }}', this)"><span class="copy-label">Copy URL</span><span class="copy-done" aria-hidden="true">Copied</span></button>
+                                            </div>
+                                            {% if token.custom_url %}
+                                            <div class="url-pair">
+                                                <input type="text" id="token-custom-url-{{ loop.index }}" class="mono url-field-compact" value="{{ token.custom_url }}" readonly onclick="this.select()" aria-label="Custom URL">
+                                                <button type="button" class="copy-btn" onclick="copyText('token-custom-url-{{ loop.index }}', this)"><span class="copy-label">Copy custom</span><span class="copy-done" aria-hidden="true">Copied</span></button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <form method="post" action="{{ url_for('dashboard.deactivate_token_route', token_id=token.token_id) }}" onsubmit="return confirm('Delete this token? Its callback history will be preserved.');">
+                                            {{ csrf_field() }}
+                                            <button type="submit" class="btn-danger">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <p>No honeypot tokens yet.</p>
+                </div>
+                {% endif %}
+            </section>
+        </div>
+    </div>
+{% endblock %}

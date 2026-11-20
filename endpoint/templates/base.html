@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#151b26">
+    <title>{% block title %}Canary Trap{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='hivemind-logo.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <h1>
+                <a href="{{ url_for('dashboard.index') }}">
+                    <img class="logo" src="{{ url_for('static', filename='hivemind-logo.png') }}" alt="" width="28" height="28">
+                    Canary Trap
+                </a>
+            </h1>
+            {% block breadcrumb %}{% endblock %}
+        </div>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <p>Canary Trap &middot; built by Hivemind (IT09)</p>
+    </footer>
+    <span id="live-status" class="visually-hidden" aria-live="polite"></span>
+    <script>
+        // iOS Safari only applies :active press states when a touch listener exists.
+        document.addEventListener("touchstart", function () {}, { passive: true });
+
+        function toggleEventRow(row) {
+            var detail = row.nextElementSibling;
+            if (!detail || !detail.classList.contains("event-detail")) return;
+            var open = !row.classList.contains("is-open");
+            row.classList.toggle("is-open", open);
+            detail.classList.toggle("is-open", open);
+            var toggle = row.querySelector(".row-toggle");
+            if (toggle) {
+                toggle.setAttribute("aria-expanded", open ? "true" : "false");
+                toggle.setAttribute("aria-label", open ? "Hide details" : "Show details");
+            }
+        }
+
+        document.addEventListener("click", function (e) {
+            var row = e.target.closest("tr.event-row");
+            if (!row) return;
+            if (!e.target.closest(".row-toggle")) {
+                if (e.target.closest("a, button, input, label, select")) return;
+                if (String(window.getSelection()).length > 0) return;
+            }
+            toggleEventRow(row);
+        });
+
+        // Event selection: count, select-all (with indeterminate), and the
+        // toolbar buttons that need a selection are disabled until there is one.
+        function syncSelection(form) {
+            var boxes = form.querySelectorAll('input[name="event_ids"]');
+            var checked = 0;
+            for (var i = 0; i < boxes.length; i++) if (boxes[i].checked) checked++;
+            var all = form.querySelector("input[data-select-all]");
+            if (all) {
+                all.checked = boxes.length > 0 && checked === boxes.length;
+                all.indeterminate = checked > 0 && checked < boxes.length;
+            }
+            var buttons = form.querySelectorAll("[data-needs-selection]");
+            for (var j = 0; j < buttons.length; j++) buttons[j].disabled = checked === 0;
+            var count = form.querySelector(".selection-count");
+            if (count) count.textContent = checked ? checked + " selected" : "";
+        }
+
+        document.addEventListener("change", function (e) {
+            var form = e.target.form;
+            if (!form) return;
+            if (e.target.matches("input[data-select-all]")) {
+                var boxes = form.querySelectorAll('input[name="event_ids"]');
+                for (var i = 0; i < boxes.length; i++) boxes[i].checked = e.target.checked;
+            } else if (e.target.name !== "event_ids") {
+                return;
+            }
+            syncSelection(form);
+        });
+
+        function initSelection(root) {
+            var forms = root.querySelectorAll("form");
+            for (var i = 0; i < forms.length; i++) {
+                if (forms[i].querySelector("[data-needs-selection]")) syncSelection(forms[i]);
+            }
+        }
+
+        initSelection(document);
+
+        // Notification banners: the × removes its banner. Delegated, so it also
+        // works on banners in an activity panel swapped in below.
+        document.addEventListener("click", function (e) {
+            var close = e.target.closest(".banner-close");
+            if (!close) return;
+            close.closest(".banner").remove();
+            var status = document.getElementById("live-status");
+            status.textContent = "Notification dismissed";
+            setTimeout(function () { status.textContent = ""; }, 1400);
+        });
+
+        // Filters: fetch the new view and swap the activity panel in place, so
+        // chips and the match count update without a page reload. The URL is
+        // kept in sync for refresh/bookmarks; any failure falls back to a normal
+        // navigation. activityRequest drops responses that arrive out of order.
+        var activityRequest = 0;
+
+        function loadActivity(url, push) {
+            var panel = document.getElementById("activity");
+            if (!panel || !window.fetch || !window.DOMParser) {
+                window.location.href = url;
+                return;
+            }
+            var request = ++activityRequest;
+            panel.setAttribute("aria-busy", "true");
+            fetch(url, { credentials: "same-origin" })
+                .then(function (resp) {
+                    if (!resp.ok) throw new Error(resp.status);
+                    return resp.text().then(function (html) { return { url: resp.url, html: html }; });
+                })
+                .then(function (result) {
+                    if (request !== activityRequest) return;
+                    var doc = new DOMParser().parseFromString(result.html, "text/html");
+                    var next = doc.getElementById("activity");
+                    var current = document.getElementById("activity");
+                    if (!next || !current) throw new Error("missing panel");
+                    current.replaceWith(next);
+                    var exportLink = document.getElementById("export-all");
+                    var nextExport = doc.getElementById("export-all");
+                    if (exportLink && nextExport) exportLink.href = nextExport.getAttribute("href");
+                    if (push) history.pushState(null, "", result.url);
+                    initSelection(next);
+                    var count = next.querySelector(".filter-count");
+                    document.getElementById("live-status").textContent =
+                        count ? count.textContent.replace(/\s+/g, " ").trim() : "Filters cleared";
+                    var search = document.getElementById("filter-q");
+                    if (push && search) search.focus();
+                })
+                .catch(function () {
+                    if (request === activityRequest) window.location.href = url;
+                });
+        }
+
+        document.addEventListener("submit", function (e) {
+            var form = e.target;
+            if (!form.matches(".filter-bar")) return;
+            e.preventDefault();
+            var query = new URLSearchParams(new FormData(form)).toString();
+            loadActivity(form.action + (query ? "?" + query : ""), true);
+        });
+
+        document.addEventListener("click", function (e) {
+            var link = e.target.closest("a[data-filter-link]");
+            if (!link || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            e.preventDefault();
+            loadActivity(link.href, true);
+        });
+
+        window.addEventListener("popstate", function () {
+            loadActivity(window.location.href, false);
+        });
+
+        function updateSearchPlaceholder(select) {
+            var option = select.options[select.selectedIndex];
+            select.form.elements.q.placeholder = option.getAttribute("data-placeholder") || "";
+        }
+
+        function toggleCustomRange(select) {
+            var custom = select.form.querySelector(".filter-custom");
+            var show = select.value === "custom";
+            custom.hidden = !show;
+            var inputs = custom.querySelectorAll("input");
+            for (var i = 0; i < inputs.length; i++) inputs[i].disabled = !show;
+        }
+
+        // Custom URL path: preview the full URL while typing (text only, nothing
+        // is requested) and flag disallowed characters before submit.
+        function previewCustomPath(input) {
+            var hint = document.getElementById(input.getAttribute("aria-describedby"));
+            var path = input.value.trim().replace(/^\//, "").replace(/\/$/, "");
+            var invalid = input.validity.patternMismatch;
+            hint.textContent = invalid ? input.title
+                : path ? input.getAttribute("data-base") + path
+                : hint.getAttribute("data-empty");
+            hint.classList.toggle("is-preview", !!path && !invalid);
+            hint.classList.toggle("is-invalid", invalid);
+        }
+
+        var customPathInput = document.getElementById("custom_path");
+        if (customPathInput && customPathInput.value) previewCustomPath(customPathInput);
+
+        function copyText(inputId, btn) {
+            var el = document.getElementById(inputId);
+            if (!el) return;
+            el.select();
+            el.setSelectionRange(0, 99999);
+            var done = function () {
+                if (!btn) return;
+                // Restart the confirmation on repeat clicks instead of stacking timers.
+                clearTimeout(btn.copyTimer);
+                btn.classList.add("is-copied");
+                document.getElementById("live-status").textContent = "Copied to clipboard";
+                btn.copyTimer = setTimeout(function () {
+                    btn.classList.remove("is-copied");
+                    document.getElementById("live-status").textContent = "";
+                }, 1400);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(el.value).then(done).catch(function () {
+                    document.execCommand("copy");
+                    done();
+                });
+            } else {
+                document.execCommand("copy");
+                done();
+            }
+        }
+    </script>
+</body>
+</html>

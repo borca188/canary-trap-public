@@ -1,0 +1,1366 @@
+:root {
+    --bg: #0d1117;
+    --card-bg: #151b26;
+    --card-bg-alt: #1a2130;
+    --text: #e6e9ef;
+    --text-muted: #8790a3;
+    --border: #262e3f;
+    --accent: #38bdf8;
+    --accent-strong: #0ea5e9;
+    /* Primary buttons: white text, AA contrast in every state
+       (5.9:1 rest, 7.6:1 hover, 9.5:1 pressed). */
+    --primary-bg: #0369a1;
+    --primary-bg-hover: #075985;
+    --primary-bg-active: #0c4a6e;
+    --primary-text: #ffffff;
+    --danger-bg: rgba(248, 113, 113, 0.08);
+    --danger-border: rgba(248, 113, 113, 0.35);
+    --danger-text: #fca5a5;
+    --success-bg: rgba(74, 222, 128, 0.08);
+    --success-border: rgba(74, 222, 128, 0.35);
+    --success-text: #86efac;
+    --focus-ring: rgba(56, 189, 248, 0.35);
+
+    /* Critically damped spring (damping 1.0, response 0.3s) sampled into linear();
+       settles in ~0.44s with no overshoot. Falls back to a close cubic-bezier. */
+    --spring: cubic-bezier(0.2, 0.9, 0.3, 1);
+    --spring-duration: 0.44s;
+
+    color-scheme: dark;
+    accent-color: var(--accent);
+}
+
+@supports (transition-timing-function: linear(0, 1)) {
+    :root {
+        --spring: linear(0, 0.114, 0.321, 0.517, 0.671, 0.783, 0.860, 0.911, 0.945,
+                         0.966, 0.979, 0.987, 0.992, 0.995, 0.997, 0.998, 1);
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+}
+
+header .header-inner {
+    max-width: 1680px;
+    margin: 0 auto;
+    padding: 1.1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+header h1 a {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--text);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+header h1 a:hover {
+    color: var(--accent);
+}
+
+/* Breadcrumb after the brand: where you are; the brand link is the way back. */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+    font-size: 1.15rem;
+    color: var(--text-muted);
+}
+
+.crumb-current {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+header .logo {
+    display: block;
+    width: 28px;
+    height: 28px;
+}
+
+main {
+    max-width: 1680px;
+    margin: 0 auto;
+    padding: 1.75rem 1.5rem 3rem;
+}
+
+footer {
+    max-width: 1680px;
+    margin: 0 auto;
+    padding: 0 1.5rem 2rem;
+}
+
+footer p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* ---- layout ---- */
+
+.layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 23%) 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.main-panel {
+    min-width: 0;
+}
+
+.main-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.1rem;
+}
+
+.main-header h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+/* ---- cards ---- */
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.card h2 {
+    margin-top: 0;
+    font-size: 1.05rem;
+}
+
+/* One uppercase micro-label style, shared by every small caption in the UI. */
+.section-label,
+.metric-label,
+th,
+.result-label,
+.filter-label,
+.detail-grid dt,
+.filter-chip-label,
+.status-pill {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.section-label {
+    color: var(--text-muted);
+    margin: 0 0 1rem;
+}
+
+/* ---- metrics ---- */
+
+.metrics-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.metric-card {
+    flex: 1;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.metric-label {
+    color: var(--text-muted);
+}
+
+.metric-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+}
+
+/* ---- links / buttons ---- */
+
+a {
+    color: var(--accent);
+}
+
+a:hover {
+    color: var(--accent-strong);
+}
+
+.btn-secondary {
+    display: inline-block;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 0.95rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn-secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* ---- table ---- */
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+.activity-scroll {
+    max-height: 30rem;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.activity-scroll thead th {
+    position: sticky;
+    top: 0;
+    background: var(--card-bg);
+    z-index: 1;
+}
+
+.ua-cell {
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tokens-scroll {
+    max-height: 18rem;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.tokens-scroll thead th {
+    position: sticky;
+    top: 0;
+    background: var(--card-bg);
+    z-index: 1;
+}
+
+.token-cell {
+    display: inline-block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.86rem;
+    min-width: 560px;
+    font-variant-numeric: tabular-nums;
+}
+
+th, td {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+th {
+    color: var(--text-muted);
+}
+
+tbody tr {
+    transition: background-color 150ms ease;
+}
+
+tbody tr:hover {
+    background: var(--card-bg-alt);
+}
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* ---- technical values (monospace only) ---- */
+
+.mono {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+    font-size: 0.85em;
+}
+
+/* ---- create token form ---- */
+
+.create-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.create-form .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.create-form label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.create-form input[type="text"] {
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.92rem;
+    background: var(--card-bg-alt);
+    color: var(--text);
+}
+
+.create-form input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.create-form button {
+    padding: 0.6rem 1.1rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--primary-bg);
+    color: var(--primary-text);
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.create-form button:hover {
+    background: var(--primary-bg-hover);
+}
+
+.create-form button:active:not(:disabled) {
+    background: var(--primary-bg-active);
+}
+
+/* Custom URL path: a "/" prefix inside the field, so it reads as a path. */
+.field-optional {
+    margin-left: 0.35rem;
+    font-weight: 400;
+    opacity: 0.8;
+}
+
+.path-input {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card-bg-alt);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.path-input:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.path-input:has(input:user-invalid) {
+    border-color: var(--danger-border);
+}
+
+.path-prefix {
+    padding-left: 0.7rem;
+    font-size: 0.92rem; /* match the input text it prefixes */
+    color: var(--text-muted);
+}
+
+.create-form .path-input input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    padding-left: 0.15rem;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+}
+
+.field-hint {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    overflow-wrap: anywhere;
+}
+
+.field-hint.is-preview {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+    color: var(--text);
+}
+
+.field-hint.is-invalid {
+    color: var(--danger-text);
+}
+
+/* ---- created-token result block ---- */
+
+.result-block {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+}
+
+.result-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-bottom: 0.85rem;
+}
+
+.result-row:last-child {
+    margin-bottom: 0;
+}
+
+.result-label {
+    color: var(--text-muted);
+}
+
+.copy-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.url-field {
+    flex: 1;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg-alt);
+    color: var(--text);
+}
+
+.url-field:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--accent);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.copy-btn:hover {
+    border-color: var(--accent);
+    background: rgba(56, 189, 248, 0.08);
+}
+
+/* "Copy" and "Copied" share one grid cell, so the button sizes to the wider
+   label and never shifts when the confirmation appears. */
+.copy-btn {
+    display: inline-grid;
+    place-items: center;
+}
+
+.copy-label,
+.copy-done {
+    grid-area: 1 / 1;
+    transition: opacity 150ms ease;
+}
+
+.copy-done {
+    opacity: 0;
+    color: var(--success-text);
+}
+
+.copy-btn.is-copied {
+    border-color: var(--success-border);
+    background: var(--success-bg);
+}
+
+.copy-btn.is-copied .copy-label {
+    opacity: 0;
+}
+
+.copy-btn.is-copied .copy-done {
+    opacity: 1;
+}
+
+/* ---- token management actions ---- */
+
+.actions-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.actions-cell form {
+    margin: 0;
+    display: inline;
+}
+
+/* Callback URL and (when set) custom URL, stacked so no column is added. */
+.url-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.url-pair {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* The custom path under its document reference ties the two together. */
+.token-custom-path {
+    display: block;
+    max-width: 220px;
+    margin-top: 0.15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-muted);
+}
+
+.url-field-compact {
+    width: 8rem;
+    box-sizing: border-box;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg-alt);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.url-field-compact:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+    color: var(--text);
+}
+
+.btn-danger {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--danger-text);
+    padding: 0.35rem 0.7rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.btn-danger:hover {
+    border-color: var(--danger-border);
+    background: var(--danger-bg);
+}
+
+/* ---- status pill ---- */
+
+.status-pill {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    vertical-align: middle;
+    margin-left: 0.5rem;
+}
+
+.status-inactive {
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-border);
+    color: var(--danger-text);
+}
+
+/* ---- banners ---- */
+
+.banner {
+    position: relative;
+    padding: 0.65rem 2.5rem 0.65rem 0.9rem; /* right: room for .banner-close */
+    border-radius: 8px;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+}
+
+.banner-error {
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-border);
+    color: var(--danger-text);
+}
+
+.banner-success {
+    background: var(--success-bg);
+    border: 1px solid var(--success-border);
+    color: var(--success-text);
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.banner-action {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+}
+
+.banner-action form {
+    margin: 0;
+}
+
+.banner-undo {
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--success-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--success-text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.banner-undo:hover {
+    background: var(--success-bg);
+}
+
+/* Centred on the banner's right edge, in the banner's own text colour. */
+.banner-close {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0.5rem;
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-block: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.banner-error .banner-close:hover {
+    background: var(--danger-bg);
+}
+
+.banner-success .banner-close:hover {
+    background: var(--success-bg);
+}
+
+/* ---- empty state ---- */
+
+.empty-state {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--text-muted);
+}
+
+.empty-state p {
+    margin: 0.3rem 0;
+}
+
+/* ---- event archive + export ---- */
+
+.check-col {
+    width: 2.25rem;
+    padding: 0;
+}
+
+.check-hit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25rem;
+    padding: 0.5rem 0.25rem 0.5rem 0.75rem;
+    cursor: pointer;
+}
+
+.check-hit input {
+    margin: 0;
+    cursor: pointer;
+}
+
+.selection-count {
+    align-self: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.events-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0.75rem 0;
+    flex-wrap: wrap;
+}
+
+.toolbar-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.toolbar-actions button {
+    padding: 0.45rem 0.9rem;
+}
+
+.row-archived td {
+    color: var(--text-muted);
+}
+
+.banner-inline {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.export-options {
+    margin: 0.75rem 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card-bg-alt);
+}
+
+.export-options summary {
+    cursor: pointer;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.export-options[open] summary {
+    border-bottom: 1px solid var(--border);
+}
+
+.export-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 0.9rem;
+    font-size: 0.85rem;
+}
+
+.export-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+}
+
+.export-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    color: var(--text-muted);
+}
+
+.export-form input[type="date"],
+.export-form select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.85rem;
+    color-scheme: dark;
+}
+
+.export-columns {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.export-columns legend {
+    color: var(--text-muted);
+    padding: 0 0.3rem;
+}
+
+.check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+/* ---- expandable event rows ---- */
+
+tr.event-row {
+    cursor: pointer;
+}
+
+tr.event-row.is-open,
+tr.event-row.is-open:hover {
+    background: var(--card-bg-alt);
+}
+
+tr.event-row.is-open td {
+    border-bottom-color: transparent;
+}
+
+.toggle-col {
+    width: 1.75rem;
+    padding: 0;
+}
+
+.row-toggle {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.row-toggle svg {
+    transition: transform var(--spring-duration) var(--spring);
+}
+
+tr.event-row:hover .row-toggle,
+.row-toggle[aria-expanded="true"] {
+    color: var(--text);
+}
+
+.row-toggle[aria-expanded="true"] svg {
+    transform: rotate(90deg);
+}
+
+tbody tr.event-detail:hover {
+    background: transparent;
+}
+
+/* The detail row always exists; its content grows from the row above it.
+   CSS transitions retarget from the current value, so a second click mid-way
+   reverses smoothly instead of jumping. */
+tr.event-detail td {
+    padding: 0;
+    border-bottom: none;
+    white-space: normal;
+    background: var(--card-bg-alt);
+}
+
+.detail-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    visibility: hidden;
+    transition:
+        grid-template-rows var(--spring-duration) var(--spring),
+        visibility 0s linear var(--spring-duration);
+}
+
+.detail-inner {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.detail-inner .detail-grid {
+    /* Left edge lines up with the Timestamp column (check + toggle columns + cell padding). */
+    padding: 0.4rem 1rem 1rem 4.75rem;
+    border-bottom: 1px solid var(--border);
+    opacity: 0;
+    transform: translateY(-4px);
+    transition:
+        opacity 200ms ease,
+        transform var(--spring-duration) var(--spring);
+}
+
+tr.event-detail.is-open .detail-wrap {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    transition:
+        grid-template-rows var(--spring-duration) var(--spring),
+        visibility 0s;
+}
+
+tr.event-detail.is-open .detail-grid {
+    opacity: 1;
+    transform: none;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.35rem 1.25rem;
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.detail-grid dt {
+    color: var(--text-muted);
+    padding-top: 0.1rem;
+}
+
+.detail-grid dd {
+    margin: 0;
+    word-break: break-all;
+}
+
+/* ---- event search + date filters ---- */
+
+.filter-bar {
+    --filter-h: 2.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.6rem 0.75rem;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+}
+
+.filter-group-search {
+    flex: 1 1 22rem;
+}
+
+.filter-label {
+    color: var(--text-muted);
+}
+
+.filter-bar select,
+.filter-bar input {
+    height: var(--filter-h);
+    background: var(--card-bg-alt);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0 0.6rem;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color-scheme: dark;
+}
+
+/* Custom chevron replaces the native arrow so every dropdown in the row matches.
+   Stroke is --text-muted (#8790a3): a data URI can't read CSS variables. */
+.filter-bar select {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 1.9rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%238790a3' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 12px 12px;
+    cursor: pointer;
+}
+
+/* Keep the open dropdown list dark instead of flashing the OS default. */
+.filter-bar option {
+    background-color: var(--card-bg-alt);
+    color: var(--text);
+}
+
+.filter-bar input[type="search"] {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.filter-bar input:focus,
+.filter-bar select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Field selector + search input drawn as one joined control. */
+.filter-search-group {
+    display: flex;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg-alt);
+}
+
+.filter-search-group:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* The group draws the border, radius and focus ring; its children draw none.
+   background-color (not the shorthand) keeps the select's chevron image. */
+.filter-search-group select,
+.filter-search-group input {
+    height: calc(var(--filter-h) - 2px);
+    border: none;
+    border-radius: 0;
+    background-color: transparent;
+}
+
+.filter-search-group select:focus,
+.filter-search-group input:focus {
+    outline: none;
+    box-shadow: none;
+    border-color: var(--border); /* keeps the divider grey while the group glows */
+}
+
+.filter-search-group select {
+    flex: 0 0 auto;
+    max-width: 11rem;
+    border-right: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
+.filter-search-group select:focus,
+.filter-search-group select:hover {
+    color: var(--text);
+}
+
+.filter-search-input,
+.filter-date-select {
+    position: relative;
+    display: flex;
+    min-width: 0;
+}
+
+.filter-search-input {
+    flex: 1 1 auto;
+}
+
+.filter-search-input input {
+    flex: 1 1 auto;
+    width: 100%;
+    padding-left: 2rem;
+}
+
+.filter-icon {
+    position: absolute;
+    left: 0.65rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.filter-date-select select {
+    padding-left: 2rem;
+    min-width: 10.5rem;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.filter-actions .btn-primary,
+.filter-actions .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--filter-h);
+    padding: 0 0.95rem;
+    border-radius: 6px;
+}
+
+.filter-custom {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.9rem;
+}
+
+.filter-custom[hidden] {
+    display: none;
+}
+
+.filter-custom label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-muted);
+}
+
+.filter-pair {
+    display: inline-flex;
+    gap: 0.3rem;
+}
+
+.filter-hint {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.btn-primary {
+    padding: 0.45rem 0.95rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--primary-bg);
+    color: var(--primary-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-primary:hover {
+    background: var(--primary-bg-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+    background: var(--primary-bg-active);
+}
+
+.filter-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.6rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.82rem;
+}
+
+.filter-count {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 999px;
+    padding: 0.15rem 0.2rem 0.15rem 0.6rem;
+    color: var(--text);
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* The × is drawn small but its padding gives a comfortable hit target. */
+.filter-chip-remove {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 999px;
+    color: var(--text-muted);
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+.filter-chip-remove:hover {
+    background: rgba(56, 189, 248, 0.16);
+    color: var(--text);
+}
+
+.filter-clear-all {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-decoration: none;
+}
+
+.filter-clear-all:hover {
+    color: var(--accent);
+}
+
+/* While a filter change loads in place, dim the results, but only if it takes
+   longer than 150ms, so fast responses never flash. */
+#activity .activity-scroll,
+#activity .empty-state {
+    transition: opacity 150ms ease;
+}
+
+#activity[aria-busy="true"] .activity-scroll,
+#activity[aria-busy="true"] .empty-state {
+    opacity: 0.55;
+    transition-delay: 150ms;
+}
+
+.filter-chip-label {
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+.export-note {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+@media (max-width: 720px) {
+    .filter-group-search {
+        flex-basis: 100%;
+    }
+
+    .filter-group:not(.filter-group-search) {
+        flex: 1 1 10rem;
+    }
+
+    .filter-date-select select {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .filter-custom label {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 420px) {
+    .filter-search-group {
+        flex-direction: column;
+    }
+
+    .filter-search-group select {
+        max-width: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .filter-actions {
+        flex: 1 1 100%;
+    }
+
+    .filter-actions > * {
+        flex: 1 1 auto;
+    }
+}
+
+/* ---- interaction: press feedback, focus, disabled ---- */
+
+button,
+.btn-secondary,
+header h1 a {
+    touch-action: manipulation;
+    transition:
+        transform 300ms var(--spring),
+        background-color 150ms ease,
+        border-color 150ms ease,
+        color 150ms ease;
+}
+
+/* Feedback lands on press, not release: shrink fast, settle back on a spring. */
+button:active:not(:disabled),
+.btn-secondary:active,
+header h1 a:active {
+    transform: scale(0.97);
+    transition-duration: 80ms;
+}
+
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+button:disabled,
+button:disabled:hover {
+    opacity: 0.4;
+    cursor: default;
+    background: transparent;
+    border-color: var(--border);
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ---- accessibility preferences ---- */
+
+@media (prefers-reduced-motion: reduce) {
+    /* No movement: rows and chevrons switch state, content cross-fades in. */
+    .detail-wrap,
+    tr.event-detail.is-open .detail-wrap,
+    .row-toggle svg {
+        transition: none;
+    }
+
+    .detail-inner .detail-grid {
+        transform: none;
+    }
+
+    button:active:not(:disabled),
+    .btn-secondary:active,
+    header h1 a:active {
+        transform: none;
+    }
+}
+
+@media (prefers-contrast: more) {
+    :root {
+        --border: #4a5568;
+        --text-muted: #b4bccb;
+    }
+}

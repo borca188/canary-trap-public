@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field, suppressed_notice, event_notices, event_toolbar, event_row_controls, event_detail, export_options %}
+{% block title %}{{ token.document_ref }} · Canary Trap{% endblock %}
+{% block breadcrumb %}
+            <nav class="breadcrumb" aria-label="Breadcrumb">
+                <span aria-hidden="true">/</span>
+                <span class="crumb-current" aria-current="page">{{ token.document_ref }}</span>
+            </nav>
+{% endblock %}
+{% block content %}
+    <section class="card">
+        <p class="section-label">Honeypot Token</p>
+        <h2>
+            {{ token.document_ref }}
+            {% if not token.is_active %}
+            <span class="status-pill status-inactive">Deactivated</span>
+            {% endif %}
+        </h2>
+
+        <div class="result-row">
+            <span class="result-label">Token</span>
+            <span class="mono">{{ token.token_id }}</span>
+        </div>
+        <div class="result-row">
+            <span class="result-label">Created</span>
+            <span>{{ token.created_at | local_time }}</span>
+        </div>
+        <div class="result-row result-row-url">
+            <span class="result-label">Callback URL</span>
+            <div class="copy-row">
+                <input type="text" id="detail-url" class="mono url-field" value="{{ token.callback_url }}" readonly onclick="this.select()">
+                <button type="button" class="copy-btn" onclick="copyText('detail-url', this)"><span class="copy-label">Copy</span><span class="copy-done" aria-hidden="true">Copied</span></button>
+            </div>
+        </div>
+        {% if token.custom_url %}
+        <div class="result-row result-row-url">
+            <span class="result-label">Custom URL</span>
+            <div class="copy-row">
+                <input type="text" id="detail-custom-url" class="mono url-field" value="{{ token.custom_url }}" readonly onclick="this.select()">
+                <button type="button" class="copy-btn" onclick="copyText('detail-custom-url', this)"><span class="copy-label">Copy</span><span class="copy-done" aria-hidden="true">Copied</span></button>
+            </div>
+            <span class="field-hint">{% if token.is_active %}Redirects (302) to the callback URL above.{% else %}Redirect disabled: this token is deactivated.{% endif %}</span>
+        </div>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <div class="main-header">
+            <p class="section-label" style="margin: 0;">Events</p>
+            <a class="btn-secondary" href="{{ url_for('dashboard.export_events_csv', token_id=token.token_id) }}">Export CSV</a>
+        </div>
+
+        {{ event_notices(archived, restored, no_selection, undo_ids) }}
+        {{ suppressed_notice(suppressed_count, rate_limit, rate_window_seconds) }}
+        {{ export_options(export_fields, token_id=token.token_id) }}
+
+        <form method="post" action="{{ url_for('dashboard.archive_events_route') }}">
+        {{ csrf_field() }}
+        <input type="hidden" name="next" value="{{ request.full_path }}">
+        <input type="hidden" name="token_id" value="{{ token.token_id }}">
+        {{ event_toolbar(show_archived, archived_count, url_for('dashboard.token_detail', token_id=token.token_id), url_for('dashboard.token_detail', token_id=token.token_id, show='archived')) }}
+
+        {% if events %}
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="check-col"><label class="check-hit"><input type="checkbox" data-select-all aria-label="Select all events"></label></th>
+                        <th class="toggle-col"><span class="visually-hidden">Details</span></th>
+                        <th>Timestamp</th>
+                        <th>IP Address</th>
+                        <th>User-Agent</th>
+                        <th>Method</th>
+                        <th>Path</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in events %}
+                    <tr class="event-row{% if event.archived_at %} row-archived{% endif %}">
+                        {{ event_row_controls(event) }}
+                        <td>{{ event.timestamp | local_time }}</td>
+                        <td class="mono">{{ event.ip_address }}</td>
+                        <td>{{ event.user_agent or "" }}</td>
+                        <td>{{ event.method }}</td>
+                        <td class="mono">{{ event.path }}</td>
+                    </tr>
+                    {{ event_detail(event, 7) }}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% elif show_archived %}
+        <div class="empty-state">
+            <p>No archived events for this token.</p>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No callback events recorded for this token yet.</p>
+        </div>
+        {% endif %}
+        </form>
+    </section>
+{% endblock %}
