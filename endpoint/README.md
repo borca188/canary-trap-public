@@ -72,11 +72,11 @@ the defaults suit one operator using the dashboard on the same machine.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `PUBLIC_BASE_URL` | Unset: URLs use the address the dashboard was opened on | The address used in the callback and custom URLs that the dashboard and API show: a scheme and host with an optional port and no path, for example `https://trap.example.com`. Set it when agents reach the endpoint at a different address than the one you open the dashboard on. It only changes the URLs shown, not which requests are logged. |
+| `PUBLIC_BASE_URL` | Unset | The address used in the callback and custom URLs that the dashboard and API show: a scheme and host with an optional port and no path, for example `https://trap.example.com`. Set it when agents reach the endpoint at a different address than the one you open the dashboard on. It only changes the URLs shown, not which requests are logged. |
 | `DASHBOARD_HOSTS` | `localhost,127.0.0.1,::1` | Comma-separated hostnames or IP addresses, without ports, that the dashboard and API answer on. Any other host gets `404 Not Found`. The value replaces the whole list, so include the defaults you still use. Callback URLs answer on any host and ignore this setting. |
 | `TRUSTED_PROXY_HOPS` | `0` | The number of proxies in front of the app, such as a tunnel or reverse proxy, whose `X-Forwarded-For` header is trusted for the logged IP address. With `0`, every hit that comes through a proxy is logged with the proxy's address. Only raise it when a proxy really is in front of the app: otherwise anyone can fake their logged IP by sending that header. |
 | `SESSION_COOKIE_SECURE` | Off | Set it to `1` when the dashboard is served over HTTPS, so the browser only sends the session cookie over HTTPS. Leave it off when the dashboard is opened over plain `http://`: the browser may not send the cookie, and the dashboard's forms are then rejected. |
-| `SECRET_KEY` | A random key saved as `secret_key` next to the database | The key that signs the dashboard's session cookie. The generated key is kept across restarts, so set this only if you want to manage the key yourself. |
+| `SECRET_KEY` | Unset. **load_secret_key()** in **endpoint/security.py** generates a random key the first time the app starts | The key that signs the dashboard's session cookie. The generated key is kept across restarts, so set this only if you want to manage the key yourself. |
 | `HONEYPOT_DB` | `instance/honeypot.db` | The path of the SQLite database. Its folder is created if it doesn't exist. |
 
 ### Setting a variable
